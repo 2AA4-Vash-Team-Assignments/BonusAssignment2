@@ -1,18 +1,5 @@
-"""
-Code Generator: draw.io XML -> Java Source Files
-
-This script parses a draw.io (.drawio) XML file containing a Class Diagram-like
-model and generates corresponding Java source code files.
-
-Translational Semantics:
-    Rectangle (vertex)                -> Java class
-    Arrow with empty triangle head    -> extends (inheritance)
-    Simple arrow with label "name (1)" -> private single-reference field
-    Simple arrow with label "name (N)" -> private List<T> field
-
-Usage:
-    python codegen.py <input.drawio> <output_directory>
-"""
+# Code Generator: draw.io XML -> Java Source Files
+# Parses a .drawio XML file and generates Java classes.
 
 import xml.etree.ElementTree as ET
 import os
@@ -21,10 +8,7 @@ import re
 
 
 def strip_html(text):
-    """
-    Strip HTML tags from a string.
-    draw.io sometimes wraps text in HTML elements like <p style="...">Text</p>.
-    """
+    """Strip HTML tags from a string (draw.io sometimes wraps text in <p> tags)."""
     if not text:
         return text
     clean = re.sub(r'<[^>]+>', '', text)
@@ -32,20 +16,7 @@ def strip_html(text):
 
 
 def parse_drawio(file_path):
-    """
-    Parse a draw.io XML file and extract classes and relationships.
-
-    Algorithm:
-    1. Parse the XML tree.
-    2. Iterate over all mxCell elements.
-    3. Identify vertices (rectangles) by the vertex="1" attribute -> these are classes.
-    4. Identify edges (arrows) by the edge="1" attribute -> these are relationships.
-    5. For edges, determine the type:
-       a. If the style contains "endArrow=block;endFill=0" or "shape=flexArrow" -> inheritance.
-       b. Otherwise -> association (directed relationship).
-    6. For associations, parse the label to extract the relationship name and cardinality.
-    7. Return structured data: a dict of classes and a list of relationships.
-    """
+    """Parse a draw.io XML file and extract classes, associations, and inheritances."""
     tree = ET.parse(file_path)
     root = tree.getroot()
 
@@ -95,11 +66,6 @@ def parse_drawio(file_path):
             # This is a label on an edge - find the parent edge
             parent_id = cell.get("parent")
             if parent_id:
-                # Update the association that has this parent edge
-                for assoc in associations:
-                    pass  # Labels on edges with value on the edge cell itself
-                # If the parent edge didn't have a value, we need to add it
-                # We handle this by checking if any association's edge matches
                 name, cardinality = parse_label(value)
                 # Find the parent edge and update
                 for edge_cell in root.iter("mxCell"):
@@ -132,12 +98,7 @@ def parse_drawio(file_path):
 
 
 def parse_label(label):
-    """
-    Parse a relationship label like "drives (1)" or "has (N)" into
-    a name and cardinality.
-
-    Returns: (name, cardinality) where cardinality is "1" or "N".
-    """
+    """Parse a label like 'drives (1)' or 'has (N)' into (name, cardinality)."""
     if not label or not label.strip():
         return ("", "1")
 
@@ -155,44 +116,13 @@ def parse_label(label):
 
 
 def to_java_class_name(name):
-    """
-    Convert a name to a valid Java class name (PascalCase).
-    E.g., "Licence plate" -> "LicencePlate"
-    """
+    """Convert a name to PascalCase, e.g. 'Licence plate' -> 'LicencePlate'."""
     parts = name.split()
     return "".join(word.capitalize() for word in parts)
 
 
-def to_java_field_name(name):
-    """
-    Convert a relationship name to a valid Java field name (camelCase).
-    E.g., "drives" -> "drives", "enrolled in" -> "enrolledIn"
-    """
-    parts = name.lower().split()
-    if not parts:
-        return "ref"
-    result = parts[0]
-    for part in parts[1:]:
-        result += part.capitalize()
-    return result
-
-
 def generate_java(classes, associations, inheritances, output_dir):
-    """
-    Generate Java source files from the parsed model.
-
-    Algorithm:
-    1. For each class, determine:
-       a. Its parent class (from inheritances).
-       b. Its outgoing associations (fields it needs).
-    2. Generate a Java file for each class with:
-       a. Import statements (java.util.List, java.util.ArrayList if needed).
-       b. Class declaration with optional extends.
-       c. Private fields for each outgoing association.
-       d. A default constructor.
-       e. Getters and setters for all fields.
-    3. Write each file to the output directory.
-    """
+    """Generate one .java file per class into output_dir."""
     os.makedirs(output_dir, exist_ok=True)
 
     # Build a map of child_id -> parent_id for inheritance
