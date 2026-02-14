@@ -20,6 +20,17 @@ import sys
 import re
 
 
+def strip_html(text):
+    """
+    Strip HTML tags from a string.
+    draw.io sometimes wraps text in HTML elements like <p style="...">Text</p>.
+    """
+    if not text:
+        return text
+    clean = re.sub(r'<[^>]+>', '', text)
+    return clean.strip()
+
+
 def parse_drawio(file_path):
     """
     Parse a draw.io XML file and extract classes and relationships.
@@ -30,7 +41,7 @@ def parse_drawio(file_path):
     3. Identify vertices (rectangles) by the vertex="1" attribute -> these are classes.
     4. Identify edges (arrows) by the edge="1" attribute -> these are relationships.
     5. For edges, determine the type:
-       a. If the style contains "endArrow=block;endFill=0" -> inheritance.
+       a. If the style contains "endArrow=block;endFill=0" or "shape=flexArrow" -> inheritance.
        b. Otherwise -> association (directed relationship).
     6. For associations, parse the label to extract the relationship name and cardinality.
     7. Return structured data: a dict of classes and a list of relationships.
@@ -45,7 +56,7 @@ def parse_drawio(file_path):
     # Find all mxCell elements anywhere in the XML tree
     for cell in root.iter("mxCell"):
         cell_id = cell.get("id")
-        value = cell.get("value", "")
+        value = strip_html(cell.get("value", ""))
         style = cell.get("style", "")
         source = cell.get("source")
         target = cell.get("target")
@@ -64,7 +75,7 @@ def parse_drawio(file_path):
         elif cell.get("edge") == "1":
             if source and target:
                 # Check if this is an inheritance arrow (empty triangle head)
-                if "endArrow=block" in style and "endFill=0" in style:
+                if ("endArrow=block" in style and "endFill=0" in style) or "shape=flexArrow" in style:
                     inheritances.append({
                         "child": source,
                         "parent": target
