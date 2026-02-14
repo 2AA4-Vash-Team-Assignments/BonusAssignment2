@@ -16,6 +16,9 @@ report/
 __pycache__/
 *.pyc
 
+# Java compiled
+*.class
+
 # LaTeX build artifacts
 *.aux
 *.log
